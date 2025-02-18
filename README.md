@@ -28,11 +28,15 @@ Sprint overviews
   Sprint 3 (3/16-3/30)
   - Being training model, see limitations with game bugs, system limitations, game speed, image processing, etc.
   - Recognize possible changes in reward system, see how the model handles mouse movement
+  - Make a deicision on whether or not the need for unity backend code is essential for training/efficiency (for example, speeding up game speed for model training)
 
   Sprint 4 (3/30-4/13)
-
+  - If shift to unity, reset up environment and possibly coding backend scripts to track enemy locations, player locations, etc.
+  - If no shift to unity, find improvement to training, making sure actions are correct, continue training
 
   Sprint 5 (4/13-4/27)
-
+  - Unsure: improvements as need be
 
   Sprint 6(4/27-5/11)
+  - Unsure: improvements as need be
+
