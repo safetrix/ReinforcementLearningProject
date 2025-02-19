@@ -1,3 +1,4 @@
 https://drive.google.com/file/d/1vPL--Wv2u-o_RcoTCLuOBm9QyHbF8qSK/view?usp=drive_link
 
 link to training photos for YOLO
+ we will then use https://www.makesense.ai/ to label each enemy and train YOLO model for object detection
