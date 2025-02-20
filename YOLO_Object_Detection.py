@@ -86,7 +86,7 @@ class ImageProcessor: #this processes the set of images and establishes the boun
         self.W = img_size[0]
         self.H = img_size[1]
         
-        with open('yolov4-tiny/obj.names', 'r') as file:
+        with open(r'C:\Users\brice\Downloads\yolo-opencv-detector-main\yolo-opencv-detector-main\yolov4-tiny\obj.names', 'r') as file:
             lines = file.readlines()
         for i, line in enumerate(lines):
             self.classes[i] = line.strip()
@@ -160,3 +160,30 @@ class ImageProcessor: #this processes the set of images and establishes the boun
             cv.putText(img, self.classes[classID], (x, y - 10), cv.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
         cv.imshow('window',  img)
 
+
+window_name = "GeoMania by NIk_Fot - Google Chrome" #this may need to be adjusted as need be
+cfg_file_name = r"C:\Users\brice\Downloads\yolo-opencv-detector-main\yolo-opencv-detector-main\yolov4-tiny\yolov4-tiny-custom.cfg" #give path to config file in folder
+weights_file_name = r"C:\Users\brice\Downloads\yolo-opencv-detector-main\yolo-opencv-detector-main\yolov4-tiny-custom_last.weights" #this is the weight file from training
+
+wincap = WindowCapture(window_name)
+improc = ImageProcessor(wincap.get_window_size(), cfg_file_name, weights_file_name)
+
+#We will want ot wrap this in its own method so it can be run at the same time the model begins running also. 
+while(True):
+    
+    ss = wincap.get_screenshot()
+    
+    if cv.waitKey(1) == ord('q'):
+        cv.destroyAllWindows()
+        break
+
+    coordinates = improc.proccess_image(ss)
+    
+    for coordinate in coordinates:
+        print(coordinate)
+    print()
+    
+    # If you have limited computer resources, consider adding a sleep delay between detections.
+    # sleep(0.2)
+
+print('Finished.')
