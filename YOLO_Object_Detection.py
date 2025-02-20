@@ -167,10 +167,9 @@ weights_file_name = r"C:\Users\brice\Downloads\yolo-opencv-detector-main\yolo-op
 
 wincap = WindowCapture(window_name)
 improc = ImageProcessor(wincap.get_window_size(), cfg_file_name, weights_file_name)
-
 #We will want ot wrap this in its own method so it can be run at the same time the model begins running also. 
 while(True):
-    
+    enemies = []
     ss = wincap.get_screenshot()
     
     if cv.waitKey(1) == ord('q'):
@@ -180,7 +179,12 @@ while(True):
     coordinates = improc.proccess_image(ss)
     
     for coordinate in coordinates:
-        print(coordinate)
+        center_x = int(coordinate["x"] + coordinate["w"] // 2) #this is to find teh center of the bounded box
+        center_y  = int(coordinate["y"] + coordinate["h"] // 2)
+      
+        enemies.append((center_x,center_y))
+
+    print(enemies)
     print()
     
     # If you have limited computer resources, consider adding a sleep delay between detections.
