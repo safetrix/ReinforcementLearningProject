@@ -13,10 +13,33 @@ from gym.spaces import Box, Discrete
 from YOLO_Object_Detection import *
 from pynput.mouse import Controller
 import threading
+import time
+
+import win32api
+import win32con
+import pyautogui
+import pygetwindow as gw
+
+from pynput.keyboard import Controller, Key
+
+
+from stable_baselines3 import DQN
+from stable_baselines3.common.vec_env import DummyVecEnv
+from stable_baselines3.common.callbacks import EvalCallback
+
+
 
 class GeoManiaEnv(Env):
     def __init__(self):
+
+        self.VK_CODE = {
+        'w': 0x57,
+        'a': 0x41,
+        's': 0x53,
+        'd': 0x44,
+    }
         self.enemies = None
+        self.keyboard = Controller()
         super().__init__()
         self.mouse = Controller()
         self.MAX_ENEMIES = 10
@@ -41,7 +64,7 @@ class GeoManiaEnv(Env):
             5, # movement, this will include 5 actions: 0 = no move, 1 = up, 2 = down, 3 = left, 4 = right
             2, # shooting, which will include 3 actions: 0 = no_shoot, 1 = shoot
             #2, # store, which has 2 actions: buy, no_buy
-            #2, # grenade, which has 2 actions: grenade, no_grenade
+            2, # grenade, which has 2 actions: grenade, no_grenade
             #2, # shield, which has 2 acition: shield, no_shield LATER WE WILL ADD THE REST IN
             ])
         self.capture = mss()
@@ -51,14 +74,20 @@ class GeoManiaEnv(Env):
     def async_enemy_detection(self):
         while True:
             self.enemies = enemy_detection_positions(self.window_name, self.cfg_file_name, self.weights_file_name, self.wincap, self.improc)
+            time.sleep(0.05)
+    def bring_window_to_front(self):
+        window = gw.getWindowsWithTitle(self.window_name)
+        if window:
+            win = window[0]
+            win.activate()
     def get_observation(self):
         raw_image =  np.array(self.capture.grab(self.player_capture))[:,:,:3] # raw image matrix of capture, with only 3 channels, as the 4th is not needed
         gray_scale = cv2.cvtColor(raw_image, cv2.COLOR_BGR2GRAY) #scaling to gray scale for binary color scheme
         resize = cv2.resize(gray_scale, (640,520))
         channel = np.reshape(resize, (1,520,640)) #stupid resize things for model later on i guess
 
-        print(self.enemies)
         return channel
+      
     
     def game_over(self):
         game_over_capture = np.array(self.capture.grab(self.game_over_capture))[:,:,:3] #same as before, but grabbing only the "You Died" text
@@ -81,37 +110,60 @@ class GeoManiaEnv(Env):
         reward = 1
         info = {}
         return new_observation, reward, done, info
+
+
+
     def take_action(self, action):
-        movement, shooting = action #for now we will keep only move and shoot and add the rest later
+        movement, shooting, grenade = action  # Extract movement and shooting actions
+        active_keys = set()
+
+        # Movement Handling
         if movement == 1:
-            pydirectinput.keyDown('w')
+            active_keys.add('w')
         elif movement == 2:
-            pydirectinput.keyDown('s')
+            active_keys.add('s')
         elif movement == 3:
-            pydirectinput.keyDown('a')
+            active_keys.add('a')
         elif movement == 4:
-            pydirectinput.keyDown('d')
+            active_keys.add('d')
 
-        if shooting == 1:
+        
+
+        # Press active movement keys
+        for key in active_keys:
+            self.keyboard.press(key)  # Key down
+            time.sleep(0.1)  # Small delay between key presses
+
+        # Release non-active movement keys
+        for key in ['w', 'a', 's', 'd']:
+            if key not in active_keys:
+                self.keyboard.release(key)  # Key up
+                time.sleep(0.1)  # Small delay between key releases
+
+        # Shooting Handling
+        if shooting == 1 and not self.shoot_bool:
             self.shoot_bool = True
-        else:
+            pyautogui.mouseDown()  # Mouse down (shoot)
+        elif shooting == 0 and self.shoot_bool:
             self.shoot_bool = False
-            pydirectinput.mouseDown()
+            pyautogui.mouseUp()  # Mouse up (stop shooting)
 
-        if self.shoot_bool and self.enemies:  # Ensure it's not empty
-            print("movingmouse")
-            self.mouse.position = (self.enemies[0], self.enemies[1])
-            pydirectinput.mouseDown()
+        # Move Mouse to Enemy
+        if self.shoot_bool and self.enemies:
+            x, y = self.enemies[0], self.enemies[1]
+            if (x, y) != self.last_position:  # Only move if position changed
+                pyautogui.moveTo(x, y)
+                self.last_position = (x, y)
+        if grenade == 1:
+            self.keyboard.press(Key.space)  # Spacebar press for grenade
+            time.sleep(0.1)  # Small delay
+            self.keyboard.release(Key.space) 
 
 
-        pydirectinput.keyUp('w') #to make sure the model doesnt keep holding it down, we may change this later
-        pydirectinput.keyUp('s')
-        pydirectinput.keyUp('a')
-        pydirectinput.keyUp('d')
     
     def render(self):
-        cv2.imshow('Game', np.array(self.capture.grab(self.player_capture))[:,:,:3])
-
+        #cv2.imshow('Game', np.array(self.capture.grab(self.player_capture))[:,:,:3])
+        pass
     def close(self):
         cv2.destroyAllWindows()
     def reset(self):
@@ -126,15 +178,5 @@ class GeoManiaEnv(Env):
         return self.get_observation()
        
 
-env = GeoManiaEnv()
 
-for epoch in range(10):
-    obs = env.reset()
-    done = False
-    total_reward = 0
-
-    while not done:
-        action = env.action_space.sample()
-        print(action)
-        obs, reward, done, info = env.step(action)
-        total_reward += reward
+# Wrap your environment to work with stable-baselines3

@@ -5,6 +5,7 @@ from time import sleep
 import cv2 as cv
 import os
 import random
+from time import time
 
 #Credit goes to https://github.com/moises-dias/yolo-opencv-detector, which is the set of notebooks that aided in creating a dataset, training, and running the model for object detection
 
@@ -156,7 +157,7 @@ class ImageProcessor: #this processes the set of images and establishes the boun
             
             color = self.colors[classID]
             
-           # cv.rectangle(img, (x, y), (x + w, y + h), color, 2)
+            #cv.rectangle(img, (x, y), (x + w, y + h), color, 2)
             #cv.putText(img, self.classes[classID], (x, y - 10), cv.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
         #cv.imshow('window',  img)
 
@@ -165,41 +166,44 @@ class ImageProcessor: #this processes the set of images and establishes the boun
 
 window_name = "GeoMania by NIk_Fot - Google Chrome"
 cfg_file_name = r"C:\Users\brice\Downloads\yolo-opencv-detector-main (1)\yolo-opencv-detector-main\yolov4-tiny\yolov4-tiny-custom.cfg"
-weights_file_name = r"C:\Users\brice\Downloads\yolo-opencv-detector-main (1)\yolo-opencv-detector-main\yolov4-tiny-custom_last (1).weights"
+weights_file_name = r"C:\Users\brice\Downloads\yolov4-tiny-custom_last (2).weights"
 
 wincap = WindowCapture(window_name)
 improc = ImageProcessor(wincap.get_window_size(), cfg_file_name, weights_file_name)
 
-def enemy_detection_positions(window_name, cfg_file, weights_file, wincap,improc):
+def enemy_detection_positions(window_name, cfg_file, weights_file, wincap,improc, decay_time=3):
     #We will want ot wrap this in its own method so it can be run at the same time the model begins running also. 
-    while(True):
-        enemies = []
-        player = []
+   while(True):
+    enemies = []
+    player = []
+    current_time = time()
+    last_known_positions = {}
+    ss = wincap.get_screenshot()
+    
+    if cv.waitKey(1) == ord('q'):
+        cv.destroyAllWindows()
+        break
 
-        ss = wincap.get_screenshot()
-        
-        coordinates = improc.proccess_image(ss)
-        for coordinate in coordinates:
-            
-            if coordinate["class_name"] == "Enemy":
+    coordinates = improc.proccess_image(ss)
+    
+    for coordinate in coordinates:
+        if coordinate["class_name"] == "Enemy":
                 center_x = int(coordinate["x"] + coordinate["w"] // 2) #this is to find teh center of the bounded box
                 center_y  = int(coordinate["y"] + coordinate["h"] // 2)
-                enemies.append((center_x,center_y))
-            if coordinate["class_name"] == "Player":
-                center_x_player = int(coordinate["x"] + coordinate["w"] // 2)
-                center_y_player = int(coordinate["y"] + coordinate["h"] // 2)
-                player.append((center_x_player, center_y_player))
 
-        #if center_x_player or center_y_player and last_position is not None:
-            #center_x_player = last_position[0]
-            #center_y_player = last_position[1]
-            #player.append(center_x_player, center_y_player)
-        print("current player position", player)
-        print("current enemy position", enemies)
-        closest_enemy = find_closest_enemy(enemies, player) #we need to find a way to always find player position, maybe we we train model to include the player as an object
-        print("closet enemy found", closest_enemy)
-        return closest_enemy
-        
+                last_known_positions[(center_x, center_y)] = current_time
+                enemies.append((center_x,center_y))
+        if coordinate["class_name"] == "Player":
+            center_x_player = int(coordinate["x"] + coordinate["w"] // 2)
+            center_y_player = int(coordinate["y"] + coordinate["h"] // 2)
+            player.append((center_x_player, center_y_player))
+    expired_keys = [pos for pos, timestamp in last_known_positions.items() if current_time - timestamp > decay_time]
+    for key in expired_keys:
+        del last_known_positions[key]
+    all_enemies = list(set(enemies) | set(last_known_positions.keys()))
+        # Merge current detections with last known ones
+    closest_enemy = find_closest_enemy(all_enemies, player)
+    return closest_enemy
         # If you have limited computer resources, consider adding a sleep delay between detections.
         # sleep(0.2)
 
@@ -215,5 +219,3 @@ def find_closest_enemy(enemies,player): #here we can use Euclidean distance to s
     
 
     return enemies[closest_index]
-
-
