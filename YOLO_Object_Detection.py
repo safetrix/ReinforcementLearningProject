@@ -156,9 +156,9 @@ class ImageProcessor: #this processes the set of images and establishes the boun
             
             color = self.colors[classID]
             
-            cv.rectangle(img, (x, y), (x + w, y + h), color, 2)
-            cv.putText(img, self.classes[classID], (x, y - 10), cv.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
-        cv.imshow('window',  img)
+           # cv.rectangle(img, (x, y), (x + w, y + h), color, 2)
+            #cv.putText(img, self.classes[classID], (x, y - 10), cv.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+        #cv.imshow('window',  img)
 
 
 
@@ -170,20 +170,15 @@ weights_file_name = r"C:\Users\brice\Downloads\yolo-opencv-detector-main (1)\yol
 wincap = WindowCapture(window_name)
 improc = ImageProcessor(wincap.get_window_size(), cfg_file_name, weights_file_name)
 
-def enemy_detection_positions(window_name, cfg_file, weights_file, wincap,improc, ememies_array):
+def enemy_detection_positions(window_name, cfg_file, weights_file, wincap,improc):
     #We will want ot wrap this in its own method so it can be run at the same time the model begins running also. 
     while(True):
         enemies = []
         player = []
+
         ss = wincap.get_screenshot()
         
-        if cv.waitKey(1) == ord('q'):
-            cv.destroyAllWindows()
-            break
-
         coordinates = improc.proccess_image(ss)
-        
-        
         for coordinate in coordinates:
             
             if coordinate["class_name"] == "Enemy":
@@ -195,8 +190,15 @@ def enemy_detection_positions(window_name, cfg_file, weights_file, wincap,improc
                 center_y_player = int(coordinate["y"] + coordinate["h"] // 2)
                 player.append((center_x_player, center_y_player))
 
+        #if center_x_player or center_y_player and last_position is not None:
+            #center_x_player = last_position[0]
+            #center_y_player = last_position[1]
+            #player.append(center_x_player, center_y_player)
+        print("current player position", player)
+        print("current enemy position", enemies)
         closest_enemy = find_closest_enemy(enemies, player) #we need to find a way to always find player position, maybe we we train model to include the player as an object
-        print(closest_enemy)
+        print("closet enemy found", closest_enemy)
+        return closest_enemy
         
         # If you have limited computer resources, consider adding a sleep delay between detections.
         # sleep(0.2)
@@ -206,12 +208,12 @@ def enemy_detection_positions(window_name, cfg_file, weights_file, wincap,improc
 def find_closest_enemy(enemies,player): #here we can use Euclidean distance to solve
     if not enemies or not player:
         return None
-    distances = np.linalg.norm(enemies - np.array([player[0][0],player[0][1]]), axis = 1)
+    distances = np.linalg.norm(enemies - np.array([player[0][0], player[0][1]]), axis=1)
+
 
     closest_index = np.argmin(distances)
     
 
     return enemies[closest_index]
 
-enemies = []
-enemy_detection_positions(window_name, cfg_file_name, weights_file_name, wincap, improc, enemies)
+
