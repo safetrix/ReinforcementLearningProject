@@ -167,27 +167,42 @@ weights_file_name = r"C:\Users\brice\Downloads\yolo-opencv-detector-main\yolo-op
 
 wincap = WindowCapture(window_name)
 improc = ImageProcessor(wincap.get_window_size(), cfg_file_name, weights_file_name)
-#We will want ot wrap this in its own method so it can be run at the same time the model begins running also. 
-while(True):
-    enemies = []
-    ss = wincap.get_screenshot()
-    
-    if cv.waitKey(1) == ord('q'):
-        cv.destroyAllWindows()
-        break
 
-    coordinates = improc.proccess_image(ss)
-    
-    for coordinate in coordinates:
-        center_x = int(coordinate["x"] + coordinate["w"] // 2) #this is to find teh center of the bounded box
-        center_y  = int(coordinate["y"] + coordinate["h"] // 2)
-      
-        enemies.append((center_x,center_y))
+def enemy_detection_positions(window_name, cfg_file, weights_file, wincap,improc):
+    #We will want ot wrap this in its own method so it can be run at the same time the model begins running also. 
+    while(True):
+        enemies = []
+        ss = wincap.get_screenshot()
+        
+        if cv.waitKey(1) == ord('q'):
+            cv.destroyAllWindows()
+            break
 
-    print(enemies)
-    print()
-    
-    # If you have limited computer resources, consider adding a sleep delay between detections.
-    # sleep(0.2)
+        coordinates = improc.proccess_image(ss)
+        
+        for coordinate in coordinates:
+            center_x = int(coordinate["x"] + coordinate["w"] // 2) #this is to find teh center of the bounded box
+            center_y  = int(coordinate["y"] + coordinate["h"] // 2)
+        
+            enemies.append((center_x,center_y))
 
-print('Finished.')
+
+        closest_enemy = find_closest_enemy(enemies, 950,650) #we need to find a way to always find player position, maybe we we train model to include the player as an object
+        print("closest Enemy is at: ", closest_enemy)
+        
+        # If you have limited computer resources, consider adding a sleep delay between detections.
+        # sleep(0.2)
+
+    print('Finished.')
+
+def find_closest_enemy(enemies, player_x, player_y): #here we can use Euclidean distance to solve
+    if not enemies:
+        return None
+    distances = np.linalg.norm(enemies - np.array([player_x,player_y]), axis = 1)
+
+    closest_index = np.argmin(distances)
+    
+
+    return enemies[closest_index]
+
+enemy_detection_positions(window_name, cfg_file_name, weights_file_name, wincap, improc)
