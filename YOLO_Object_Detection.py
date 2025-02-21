@@ -161,17 +161,20 @@ class ImageProcessor: #this processes the set of images and establishes the boun
         cv.imshow('window',  img)
 
 
-window_name = "GeoMania by NIk_Fot - Google Chrome" #this may need to be adjusted as need be
-cfg_file_name = r"C:\Users\brice\Downloads\yolo-opencv-detector-main\yolo-opencv-detector-main\yolov4-tiny\yolov4-tiny-custom.cfg" #give path to config file in folder
-weights_file_name = r"C:\Users\brice\Downloads\yolo-opencv-detector-main\yolo-opencv-detector-main\yolov4-tiny-custom_last.weights" #this is the weight file from training
+
+
+window_name = "GeoMania by NIk_Fot - Google Chrome"
+cfg_file_name = r"C:\Users\brice\Downloads\yolo-opencv-detector-main (1)\yolo-opencv-detector-main\yolov4-tiny\yolov4-tiny-custom.cfg"
+weights_file_name = r"C:\Users\brice\Downloads\yolo-opencv-detector-main (1)\yolo-opencv-detector-main\yolov4-tiny-custom_last (1).weights"
 
 wincap = WindowCapture(window_name)
 improc = ImageProcessor(wincap.get_window_size(), cfg_file_name, weights_file_name)
 
-def enemy_detection_positions(window_name, cfg_file, weights_file, wincap,improc):
+def enemy_detection_positions(window_name, cfg_file, weights_file, wincap,improc, ememies_array):
     #We will want ot wrap this in its own method so it can be run at the same time the model begins running also. 
     while(True):
         enemies = []
+        player = []
         ss = wincap.get_screenshot()
         
         if cv.waitKey(1) == ord('q'):
@@ -180,29 +183,35 @@ def enemy_detection_positions(window_name, cfg_file, weights_file, wincap,improc
 
         coordinates = improc.proccess_image(ss)
         
-        for coordinate in coordinates:
-            center_x = int(coordinate["x"] + coordinate["w"] // 2) #this is to find teh center of the bounded box
-            center_y  = int(coordinate["y"] + coordinate["h"] // 2)
         
-            enemies.append((center_x,center_y))
+        for coordinate in coordinates:
+            
+            if coordinate["class_name"] == "Enemy":
+                center_x = int(coordinate["x"] + coordinate["w"] // 2) #this is to find teh center of the bounded box
+                center_y  = int(coordinate["y"] + coordinate["h"] // 2)
+                enemies.append((center_x,center_y))
+            if coordinate["class_name"] == "Player":
+                center_x_player = int(coordinate["x"] + coordinate["w"] // 2)
+                center_y_player = int(coordinate["y"] + coordinate["h"] // 2)
+                player.append((center_x_player, center_y_player))
 
-
-        closest_enemy = find_closest_enemy(enemies, 950,650) #we need to find a way to always find player position, maybe we we train model to include the player as an object
-        print("closest Enemy is at: ", closest_enemy)
+        closest_enemy = find_closest_enemy(enemies, player) #we need to find a way to always find player position, maybe we we train model to include the player as an object
+        print(closest_enemy)
         
         # If you have limited computer resources, consider adding a sleep delay between detections.
         # sleep(0.2)
 
-    print('Finished.')
 
-def find_closest_enemy(enemies, player_x, player_y): #here we can use Euclidean distance to solve
-    if not enemies:
+
+def find_closest_enemy(enemies,player): #here we can use Euclidean distance to solve
+    if not enemies or not player:
         return None
-    distances = np.linalg.norm(enemies - np.array([player_x,player_y]), axis = 1)
+    distances = np.linalg.norm(enemies - np.array([player[0][0],player[0][1]]), axis = 1)
 
     closest_index = np.argmin(distances)
     
 
     return enemies[closest_index]
 
-enemy_detection_positions(window_name, cfg_file_name, weights_file_name, wincap, improc)
+enemies = []
+enemy_detection_positions(window_name, cfg_file_name, weights_file_name, wincap, improc, enemies)
